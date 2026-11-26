@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Semester Class Tracker</title>
+    <meta name="theme-color" content="#1e293b">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --accent: #38bdf8;
+            --green: #22c55e;
+            --yellow: #eab308;
+            --red: #ef4444;
+            --border: #334155;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); padding-bottom: 90px; }
+
+        /* Header */
+        header { background: var(--card); padding: 14px 16px; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+        header h1 { font-size: 1.1rem; color: var(--accent); }
+        .top-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        .btn-sm { background: #334155; color: var(--text); border: none; padding: 6px 10px; border-radius: 6px; font-size: 0.74rem; cursor: pointer; }
+        .btn-sm.pdf-btn { background: #0284c7; color: #fff; font-weight: 600; }
+        .btn-sm.html-btn { background: #0f766e; color: #fff; font-weight: 600; }
+
+        /* Course Bar */
+        .course-bar { display: flex; align-items: center; overflow-x: auto; padding: 10px 16px; gap: 8px; background: #162032; border-bottom: 1px solid var(--border); }
+        .course-chip { padding: 7px 13px; border-radius: 20px; background: var(--card); border: 1px solid var(--border); color: var(--text); white-space: nowrap; font-size: 0.84rem; cursor: pointer; }
+        .course-chip.active { background: var(--accent); color: #0f172a; font-weight: bold; border-color: var(--accent); }
+        .edit-course-btn { background: var(--card); border: 1px solid var(--border); color: var(--accent); border-radius: 50%; width: 30px; height: 30px; flex-shrink: 0; cursor: pointer; font-size: 0.85rem; }
+        .add-course-btn { background: transparent; border: 1px dashed var(--accent); color: var(--accent); }
+
+        /* Part & Filter Bars */
+        .controls-wrap { padding: 10px 16px 4px; display: flex; flex-direction: column; gap: 8px; }
+        .part-tabs, .filter-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+        .part-btn, .filter-btn { padding: 7px 13px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--muted); font-size: 0.8rem; white-space: nowrap; cursor: pointer; }
+        .part-btn.active { background: #1d4ed8; color: #fff; border-color: #3b82f6; font-weight: 600; }
+        .filter-btn.active { color: var(--text); border-color: var(--accent); background: #26354d; }
+
+        /* Class Grid */
+        .class-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 12px; padding: 10px 16px 0; }
+        .class-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 13px; cursor: pointer; transition: transform 0.1s; }
+        .class-box:active { transform: scale(0.97); }
+        .class-title { font-weight: bold; font-size: 0.96rem; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
+        .part-tag { font-size: 0.68rem; padding: 2px 6px; border-radius: 5px; background: #334155; color: #cbd5e1; font-weight: 600; }
+        .class-preview { font-size: 0.76rem; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin: 6px 0 10px; min-height: 28px; }
+        .dots { display: flex; gap: 4px; flex-wrap: wrap; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; }
+        .dot.covered { background: var(--green); }
+        .dot.pending { background: var(--yellow); }
+        .dot.hard { background: var(--red); }
+
+        /* Modal */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 200; align-items: flex-end; }
+        .modal.open { display: flex; }
+        .modal-content { background: var(--card); width: 100%; max-height: 92vh; border-radius: 20px 20px 0 0; padding: 20px; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        .close-btn { background: none; border: none; color: var(--muted); font-size: 1.5rem; cursor: pointer; }
+
+        .section-label { font-size: 0.84rem; color: var(--accent); margin: 12px 0 6px; font-weight: 600; }
+        textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 10px; font-size: 0.9rem; resize: vertical; }
+
+        .topic-input-row { display: flex; gap: 8px; margin-bottom: 10px; }
+        .topic-input-row input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; color: var(--text); }
+        .topic-input-row button { background: var(--accent); color: #0f172a; border: none; border-radius: 8px; padding: 0 16px; font-weight: bold; cursor: pointer; }
+
+        .topic-item { background: var(--bg); padding: 10px; border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--border); }
+        .topic-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .topic-name { font-size: 0.92rem; }
+        .del-topic { color: var(--red); background: none; border: none; font-size: 0.85rem; cursor: pointer; }
+
+        .status-pills { display: flex; gap: 6px; }
+        .pill { flex: 1; text-align: center; padding: 5px; border-radius: 6px; font-size: 0.72rem; border: 1px solid var(--border); cursor: pointer; opacity: 0.55; }
+        .pill.selected { opacity: 1; font-weight: bold; }
+        .pill[data-status="covered"] { border-color: var(--green); color: var(--green); }
+        .pill[data-status="covered"].selected { background: var(--green); color: #000; }
+        .pill[data-status="pending"] { border-color: var(--yellow); color: var(--yellow); }
+        .pill[data-status="pending"].selected { background: var(--yellow); color: #000; }
+        .pill[data-status="hard"] { border-color: var(--red); color: var(--red); }
+        .pill[data-status="hard"].selected { background: var(--red); color: #fff; }
+
+        .add-more-class { display: block; width: calc(100% - 32px); margin: 16px auto; padding: 12px; background: var(--card); border: 1px dashed var(--muted); color: var(--text); border-radius: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>📚 Class Tracker</h1>
+    <div class="top-actions">
+        <button class="btn-sm pdf-btn" onclick="exportCoursePDF()">📄 Course PDF</button>
+        <button class="btn-sm html-btn" onclick="exportHTML()">🌐 HTML</button>
+        <button class="btn-sm" onclick="exportJSON()">⬇ JSON</button>
+        <button class="btn-sm" onclick="document.getElementById('importFile').click()">⬆ Restore</button>
+        <input type="file" id="importFile" style="display:none" accept=".json" onchange="importJSON(event)">
+    </div>
+</header>
+
+<div class="course-bar" id="courseBar"></div>
+
+<div class="controls-wrap">
+    <div class="part-tabs" id="partTabs">
+        <button class="part-btn active" onclick="setPart('Part A', this)">Part A (1–28)</button>
+        <button class="part-btn" onclick="setPart('Part B', this)">Part B (1–28)</button>
+        <button class="part-btn" onclick="setPart('ALL', this)">All Classes</button>
+    </div>
+
+    <div class="filter-bar">
+        <button class="filter-btn active" onclick="setFilter('all', this)">All Classes</button>
+        <button class="filter-btn" onclick="setFilter('pending', this)">🟡 Need to Cover</button>
+        <button class="filter-btn" onclick="setFilter('hard', this)">🔴 Hard / Review</button>
+        <button class="filter-btn" onclick="setFilter('important', this)">⭐ Important Marked</button>
+    </div>
+</div>
+
+<div class="class-grid" id="classGrid"></div>
+<button class="add-more-class" id="addMoreBtn" onclick="addMoreClasses()">+ Add 5 More Classes</button>
+
+<!-- Class Detail Modal -->
+<div class="modal" id="classModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Class 1</h2>
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+        </div>
+
+        <div class="section-label">📌 Topics Taught in Class (Mark Status)</div>
+        <div class="topic-input-row">
+            <input type="text" id="newTopicInput" placeholder="e.g., Shear Force Diagram..." onkeypress="if(event.key==='Enter') addTopic()">
+            <button onclick="addTopic()">Add</button>
+        </div>
+        <div id="topicList"></div>
+
+        <div class="section-label">⭐ Important Topics / Exam Hints</div>
+        <textarea id="importantNotes" rows="3" placeholder="Sir said this will come in Quiz/Final..." oninput="saveNotes()"></textarea>
+
+        <div class="section-label">📝 Extra Class Notes / Summary</div>
+        <textarea id="extraNotes" rows="3" placeholder="Formula page number, assignment details..." oninput="saveNotes()"></textarea>
+    </div>
+</div>
+
+<script>
+    const CLASSES_PER_PART = 28;
+
+    function createPartClasses(partName, count = CLASSES_PER_PART) {
+        return Array.from({ length: count }, (_, i) => ({
+            classNum: i + 1,
+            part: partName,
+            topics: [],
+            important: '',
+            notes: ''
+        }));
+    }
+
+    function createEmptyCourse() {
+        return {
+            'Part A': createPartClasses('Part A', CLASSES_PER_PART),
+            'Part B': createPartClasses('Part B', CLASSES_PER_PART)
+        };
+    }
+
+    let appData = JSON.parse(localStorage.getItem('semesterTrackerDataV2')) || {
+        activeCourse: 'Course 1',
+        courses: {
+            'Course 1': createEmptyCourse(),
+            'Course 2': createEmptyCourse()
+        }
+    };
+
+    let currentPart = 'Part A';
+    let currentFilter = 'all';
+    let activePartKey = null;
+    let activeClassIndex = null;
+
+    function saveData() {
+        localStorage.setItem('semesterTrackerDataV2', JSON.stringify(appData));
+    }
+
+    function renderCourses() {
+        const bar = document.getElementById('courseBar');
+        bar.innerHTML = '';
+
+        Object.keys(appData.courses).forEach(course => {
+            const chip = document.createElement('div');
+            chip.className = `course-chip ${course === appData.activeCourse ? 'active' : ''}`;
+            chip.textContent = course;
+            chip.onclick = () => {
+                appData.activeCourse = course;
+                saveData();
+                renderCourses();
+                renderClasses();
+            };
+            bar.appendChild(chip);
+        });
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'edit-course-btn';
+        editBtn.title = 'Rename Current Course';
+        editBtn.textContent = '✏️';
+        editBtn.onclick = renameCurrentCourse;
+        bar.appendChild(editBtn);
+
+        const addBtn = document.createElement('div');
+        addBtn.className = 'course-chip add-course-btn';
+        addBtn.textContent = '+ New Course';
+        addBtn.onclick = () => {
+            const name = prompt('Enter Course Code/Name (e.g., CE 3101 - Structural Analysis):');
+            if (name && name.trim()) {
+                const cleanName = name.trim();
+                if (appData.courses[cleanName]) {
+                    alert('Course name already exists!');
+                    return;
+                }
+                appData.courses[cleanName] = createEmptyCourse();
+                appData.activeCourse = cleanName;
+                saveData();
+                renderCourses();
+                renderClasses();
+            }
+        };
+        bar.appendChild(addBtn);
+    }
+
+    function renameCurrentCourse() {
+        const oldName = appData.activeCourse;
+        const newName = prompt('Edit Course Name:', oldName);
+        if (!newName || !newName.trim()) return;
+        const cleanNew = newName.trim();
+        if (cleanNew === oldName) return;
+        if (appData.courses[cleanNew]) {
+            alert('A course with this name already exists!');
+            return;
+        }
+
+        const rebuilt = {};
+        Object.keys(appData.courses).forEach(key => {
+            rebuilt[key === oldName ? cleanNew : key] = appData.courses[key];
+        });
+        appData.courses = rebuilt;
+        appData.activeCourse = cleanNew;
+        saveData();
+        renderCourses();
+        renderClasses();
+    }
+
+    function setPart(part, btn) {
+        currentPart = part;
+        document.querySelectorAll('.part-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('addMoreBtn').style.display = part === 'ALL' ? 'none' : 'block';
+        renderClasses();
+    }
+
+    function setFilter(filter, btn) {
+        currentFilter = filter;
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderClasses();
+    }
+
+    function getVisibleItems() {
+        const courseObj = appData.courses[appData.activeCourse] || createEmptyCourse();
+        const partsToCheck = currentPart === 'ALL' ? ['Part A', 'Part B'] : [currentPart];
+        const items = [];
+
+        partsToCheck.forEach(partName => {
+            const list = courseObj[partName] || [];
+            list.forEach((cls, idx) => {
+                if (currentFilter === 'pending' && !cls.topics.some(t => t.status === 'pending')) return;
+                if (currentFilter === 'hard' && !cls.topics.some(t => t.status === 'hard')) return;
+                if (currentFilter === 'important' && !cls.important.trim()) return;
+                items.push({ partName, idx, cls });
+            });
+        });
+
+        return items;
+    }
+
+    function renderClasses() {
+        const grid = document.getElementById('classGrid');
+        grid.innerHTML = '';
+        const items = getVisibleItems();
+
+        items.forEach(({ partName, idx, cls }) => {
+            const box = document.createElement('div');
+            box.className = 'class-box';
+            box.onclick = () => openModal(partName, idx);
+
+            const topicNames = cls.topics.map(t => t.name).join(', ') || 'Tap to add topics...';
+            const starBadge = cls.important.trim() ? '⭐' : '';
+            const dotsHtml = cls.topics.map(t => `<span class="dot ${t.status}"></span>`).join('');
+
+            box.innerHTML = `
+                <div class="class-title">
+                    <span>Class ${cls.classNum} ${starBadge}</span>
+                    <span class="part-tag">${partName}</span>
+                </div>
+                <div class="class-preview">${topicNames}</div>
+                <div class="dots">${dotsHtml}</div>
+            `;
+            grid.appendChild(box);
+        });
+    }
+
+    function addMoreClasses() {
+        if (currentPart === 'ALL') return;
+        const list = appData.courses[appData.activeCourse][currentPart];
+        const start = list.length + 1;
+        for (let i = 0; i < 5; i++) {
+            list.push({
+                classNum: start + i,
+                part: currentPart,
+                topics: [],
+                important: '',
+                notes: ''
+            });
+        }
+        saveData();
+        renderClasses();
+    }
+
+    function openModal(partName, idx) {
+        activePartKey = partName;
+        activeClassIndex = idx;
+        const cls = appData.courses[appData.activeCourse][partName][idx];
+        document.getElementById('modalTitle').textContent = `${appData.activeCourse} • ${partName} - Class ${cls.classNum}`;
+        document.getElementById('importantNotes').value = cls.important;
+        document.getElementById('extraNotes').value = cls.notes;
+        renderTopics();
+        document.getElementById('classModal').classList.add('open');
+    }
+
+    function closeModal() {
+        document.getElementById('classModal').classList.remove('open');
+        renderClasses();
+    }
+
+    function renderTopics() {
+        const list = document.getElementById('topicList');
+        list.innerHTML = '';
+        const cls = appData.courses[appData.activeCourse][activePartKey][activeClassIndex];
+
+        cls.topics.forEach((topic, tIdx) => {
+            const item = document.createElement('div');
+            item.className = 'topic-item';
+            item.innerHTML = `
+                <div class="topic-top">
+                    <span class="topic-name">${escapeHtml(topic.name)}</span>
+                    <button class="del-topic" onclick="deleteTopic(${tIdx})">Remove</button>
+                </div>
+                <div class="status-pills">
+                    <div class="pill ${topic.status === 'covered' ? 'selected' : ''}" data-status="covered" onclick="setStatus(${tIdx}, 'covered')">🟢 Covered</div>
+                    <div class="pill ${topic.status === 'pending' ? 'selected' : ''}" data-status="pending" onclick="setStatus(${tIdx}, 'pending')">🟡 To Cover</div>
+                    <div class="pill ${topic.status === 'hard' ? 'selected' : ''}" data-status="hard" onclick="setStatus(${tIdx}, 'hard')">🔴 Hard/Later</div>
+                </div>
+            `;
+            list.appendChild(item);
+        });
+    }
+
+    function addTopic() {
+        const input = document.getElementById('newTopicInput');
+        const val = input.value.trim();
+        if (!val) return;
+        appData.courses[appData.activeCourse][activePartKey][activeClassIndex].topics.push({
+            name: val,
+            status: 'pending'
+        });
+        input.value = '';
+        saveData();
+        renderTopics();
+    }
+
+    function setStatus(tIdx, status) {
+        appData.courses[appData.activeCourse][activePartKey][activeClassIndex].topics[tIdx].status = status;
+        saveData();
+        renderTopics();
+    }
+
+    function deleteTopic(tIdx) {
+        appData.courses[appData.activeCourse][activePartKey][activeClassIndex].topics.splice(tIdx, 1);
+        saveData();
+        renderTopics();
+    }
+
+    function saveNotes() {
+        const cls = appData.courses[appData.activeCourse][activePartKey][activeClassIndex];
+        cls.important = document.getElementById('importantNotes').value;
+        cls.notes = document.getElementById('extraNotes').value;
+        saveData();
+    }
+
+    function escapeHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function statusLabel(status) {
+        if (status === 'covered') return 'Covered';
+        if (status === 'hard') return 'Hard / Later';
+        return 'To Cover';
+    }
+
+    function buildCourseReportHtml(courseName, courseObj) {
+        const renderPartSection = (partName) => {
+            const list = courseObj[partName] || [];
+            const activeClasses = list.filter(c => c.topics.length > 0 || c.important.trim() || c.notes.trim());
+            if (!activeClasses.length) return `<p style="color:#64748b;font-style:italic;">No recorded entries in ${partName}.</p>`;
+
+            return activeClasses.map(c => {
+                const topicsHtml = c.topics.length
+                    ? `<ul style="margin:4px 0 0 18px;">${c.topics.map(t => `<li>${escapeHtml(t.name)} — <strong>[${statusLabel(t.status)}]</strong></li>`).join('')}</ul>`
+                    : `<span style="color:#94a3b8;">None</span>`;
+
+                return `
+                    <div style="border:1px solid #cbd5e1;border-radius:8px;padding:12px;margin-bottom:12px;page-break-inside:avoid;">
+                        <div style="font-weight:700;font-size:15px;color:#0f172a;margin-bottom:6px;">Class ${c.classNum} <span style="font-size:12px;color:#334155;">(${partName})</span></div>
+                        <div style="margin-bottom:6px;"><strong>Topics:</strong> ${topicsHtml}</div>
+                        ${c.important.trim() ? `<div style="margin-bottom:6px;"><strong>⭐ Important / Exam Hints:</strong> ${escapeHtml(c.important).replace(/\n/g, '<br>')}</div>` : ''}
+                        ${c.notes.trim() ? `<div><strong>📝 Extra Notes:</strong> ${escapeHtml(c.notes).replace(/\n/g, '<br>')}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        };
+
+        return `
+            <div style="font-family:Arial,sans-serif;color:#1e293b;max-width:850px;margin:0 auto;padding:20px;">
+                <h1 style="margin-bottom:4px;color:#0f172a;">${escapeHtml(courseName)} — Class Notes & Topics</h1>
+                <p style="color:#475569;font-size:13px;margin-bottom:20px;">Generated on ${new Date().toLocaleDateString()}</p>
+                <h2 style="border-bottom:2px solid #0284c7;padding-bottom:4px;color:#0369a1;margin-top:18px;">Part A</h2>
+                <div style="margin-top:10px;">${renderPartSection('Part A')}</div>
+                <h2 style="border-bottom:2px solid #0284c7;padding-bottom:4px;color:#0369a1;margin-top:24px;">Part B</h2>
+                <div style="margin-top:10px;">${renderPartSection('Part B')}</div>
+            </div>
+        `;
+    }
+
+    function exportCoursePDF() {
+        const courseName = appData.activeCourse;
+        const courseObj = appData.courses[courseName] || createEmptyCourse();
+        const reportBody = buildCourseReportHtml(courseName, courseObj);
+
+        const printWin = window.open('', '_blank');
+        if (!printWin) {
+            alert('Please allow pop-ups to open the printable PDF view.');
+            return;
+        }
+        printWin.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>${escapeHtml(courseName)} Notes</title>
+                <style>
+                    @media print {
+                        .no-print { display: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="no-print" style="text-align:center;padding:12px;background:#f1f5f9;">
+                    <button onclick="window.print()" style="padding:10px 18px;font-size:14px;background:#0284c7;color:#fff;border:none;border-radius:6px;cursor:pointer;">Save / Print as PDF</button>
+                </div>
+                ${reportBody}
+            </body>
+            </html>
+        `);
+        printWin.document.close();
+        printWin.focus();
+        setTimeout(() => printWin.print(), 300);
+    }
+
+    function exportHTML() {
+        const courseName = appData.activeCourse;
+        const courseObj = appData.courses[courseName] || createEmptyCourse();
+        const fullHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>${escapeHtml(courseName)} - Semester Notes</title>
+</head>
+<body>
+${buildCourseReportHtml(courseName, courseObj)}
+</body>
+</html>`;
+
+        const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${courseName.replace(/[^a-zA-Z0-9_-]/g, '_')}_Notes.html`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function exportJSON() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+        const a = document.createElement('a');
+        a.href = dataStr;
+        a.download = `Semester_Backup_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+    }
+
+    function importJSON(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                appData = JSON.parse(e.target.result);
+                saveData();
+                renderCourses();
+                renderClasses();
+                alert('Backup Restored Successfully!');
+            } catch (err) {
+                alert('Invalid backup file!');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    renderCourses();
+    renderClasses();
+</script>
+</body>
+</html>
